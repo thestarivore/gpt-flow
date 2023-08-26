@@ -1,0 +1,6 @@
+Given the following user request: 
+
+"{UserMessage}"
+
+Generate up to 5 goals that a system capable of autonomous reasoning such as this whould need in order to efficiently search a solution.
+The goals must be concise and elencate what the user wants with his request. Keep in mind that the last goal should always be "Shut down when you are done".
