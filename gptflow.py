@@ -4,10 +4,6 @@ import os
 # Import the openai package
 import openai
   
-OPENAI_API_KEY="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"
-
-
-
 def main():
     # Set openai.api_key to the OPENAI environment variable (eg. os.environ["OPENAI"])
     #openai.my_api_key = os.environ["OPENAI"]
