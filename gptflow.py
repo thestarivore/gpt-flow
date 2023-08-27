@@ -14,7 +14,7 @@ def main():
     assistant = OpenAI_GPTAssistant()
     user_msg = "Find out and write on file the last 5 presidents of UnitedStates"
 
-    response = assistant.make_first_decision(user_msg)
+    response, json_content = assistant.make_first_decision(user_msg)
     assistant.print_response(response)
 
 
