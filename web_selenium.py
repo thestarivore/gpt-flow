@@ -28,7 +28,7 @@ from webdriver_manager.firefox import GeckoDriverManager
 from webdriver_manager.microsoft import EdgeChromiumDriverManager as EdgeDriverManager
 from requests.compat import urljoin
 
-BrowserOptions = ChromeOptions #| EdgeOptions | FirefoxOptions | SafariOptions
+BrowserOptions = ChromeOptions | EdgeOptions | FirefoxOptions | SafariOptions
 
 FILE_DIR = Path(__file__).parent.parent
 
@@ -44,16 +44,18 @@ def browse_website(url: str, question: str) -> str:
         Tuple[str, WebDriver]: The answer and links to the user and the webdriver
     """
     try:
-        driver, text = scrape_text_with_selenium(url)
+        driver, text = scrape_text_with_selenium(url, "firefox")        ##TODO: make this a configuration option somewhere
     except WebDriverException as e:
         # These errors are often quite long and include lots of context.
         # Just grab the first line.
         msg = e.msg.split("\n")[0]
         return f"Error: {msg}"
+    
+    return text #TODO: continue with summary before ending the function
 
     add_header(driver)
-    summary = summarize_memorize_webpage(url, text, question, driver)
-    links = scrape_links_with_selenium(driver, url)
+    summary = "No summary yet" #summarize_memorize_webpage(url, text, question, driver) #TODO: finish
+    #links = scrape_links_with_selenium(driver, url)    ##TODO
 
     # Limit links to 5
     if len(links) > 5:
@@ -62,7 +64,7 @@ def browse_website(url: str, question: str) -> str:
     return f"Answer gathered from website: {summary}\n\nLinks: {links}"
 
 
-def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
+def scrape_text_with_selenium(url: str, browser_name: str) -> tuple[WebDriver, str]:
     """Scrape text from a website using selenium
 
     Args:
@@ -71,7 +73,7 @@ def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
     Returns:
         Tuple[WebDriver, str]: The webdriver and the text scraped from the website
     """
-    logging.getLogger("selenium").setLevel(logging.CRITICAL)
+    #logging.getLogger("selenium").setLevel(logging.CRITICAL)
 
     options_available: dict[str, Type[BrowserOptions]] = {
         "chrome": ChromeOptions,
@@ -79,25 +81,24 @@ def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
         "firefox": FirefoxOptions,
         "safari": SafariOptions,
     }
-
-    '''
-    options: BrowserOptions = options_available[agent.config.selenium_web_browser]()
+    
+    options: BrowserOptions = options_available[browser_name]()
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36"
     )
 
-    if agent.config.selenium_web_browser == "firefox":
-        if agent.config.selenium_headless:
+    if browser_name == "firefox":
+        if True: #agent.config.selenium_headless:
             options.headless = True
             options.add_argument("--disable-gpu")
         driver = FirefoxDriver(
             service=GeckoDriverService(GeckoDriverManager().install()), options=options
         )
-    elif agent.config.selenium_web_browser == "edge":
+    elif browser_name == "edge":
         driver = EdgeDriver(
             service=EdgeDriverService(EdgeDriverManager().install()), options=options
         )
-    elif agent.config.selenium_web_browser == "safari":
+    elif browser_name == "safari":
         # Requires a bit more setup on the users end
         # See https://developer.apple.com/documentation/webkit/testing_with_webdriver_in_safari
         driver = SafariDriver(options=options)
@@ -107,7 +108,7 @@ def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
             options.add_argument("--remote-debugging-port=9222")
 
         options.add_argument("--no-sandbox")
-        if agent.config.selenium_headless:
+        if True: #agent.config.selenium_headless:
             options.add_argument("--headless=new")
             options.add_argument("--disable-gpu")
 
@@ -137,7 +138,7 @@ def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     text = "\n".join(chunk for chunk in chunks if chunk)
     return driver, text
-    '''
+    
 
 def extract_hyperlinks(soup: BeautifulSoup, base_url: str) -> list[tuple[str, str]]:
     """Extract hyperlinks from a BeautifulSoup object
@@ -236,13 +237,13 @@ def summarize_memorize_webpage(
     if not text:
         return "Error: No text to summarize"
 
-    '''
+    
     text_length = len(text)
-    logger.info(f"Text length: {text_length} characters")
+    #logger.info(f"Text length: {text_length} characters")
 
-    memory = get_memory(agent.config)
+    #memory = get_memory(agent.config)      #TODO
 
-    new_memory = MemoryItem.from_webpage(text, url, agent.config, question=question)
-    memory.add(new_memory)
-    return new_memory.summary
-    '''
+    #new_memory = MemoryItem.from_webpage(text, url, agent.config, question=question)       #TODO
+    #memory.add(new_memory)     #TODO
+    #return new_memory.summary
+    
