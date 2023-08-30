@@ -2,9 +2,11 @@ import openai
 import datetime
 import json
 import os
-from GPTAssistant import GPTAssistant
+from gpt_agent import GPT_Agent
 from typing import TYPE_CHECKING, List, Literal, Optional, TypedDict
 
+GPT_4_MODEL = "gpt-4"
+GPT_3_MODEL = "gpt-3.5-turbo"
 
 MessageRole = Literal["system", "user", "assistant"]
 MessageType = Literal["ai_response", "action_result"]
@@ -24,10 +26,11 @@ class Message:
     def raw(self) -> MessageDict:
         return {"role": self.role, "content": self.content}
 
-class OpenAI_GPTAssistant(GPTAssistant):
+class OpenAI_GPT_Agent(GPT_Agent):
     _instance = None
     GPT_GOALS_MAKING_TEMPERATURE = 1.0
     GPT_DECISION_MAKING_TEMPERATURE = 1.0
+    GPT_SUMMARY_MAKING_TEMPERATURE = 1.0
 
     # Define the expected structure for the thoughts object of the response JSON
     _expected_thoughts_structure = {
@@ -42,7 +45,7 @@ class OpenAI_GPTAssistant(GPTAssistant):
     
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(OpenAI_GPTAssistant, cls).__new__(cls)
+            cls._instance = super(OpenAI_GPT_Agent, cls).__new__(cls)
             cls._instance.initialize("GPT-FLOW")
         return cls._instance
     
@@ -91,7 +94,7 @@ class OpenAI_GPTAssistant(GPTAssistant):
             {"role": "user", "content": complete_user_msg}
         ]
         
-        response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=self.GPT_GOALS_MAKING_TEMPERATURE)
+        response = openai.ChatCompletion.create(model=GPT_3_MODEL, messages=messages, temperature=self.GPT_GOALS_MAKING_TEMPERATURE)
         self._increment_token_used(response)
         print(response)
 
@@ -146,7 +149,7 @@ class OpenAI_GPTAssistant(GPTAssistant):
         '''
         response, content, json_content = None, None, None
         while True:
-            response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=temperature)
+            response = openai.ChatCompletion.create(model=GPT_3_MODEL, messages=messages, temperature=temperature)
             self._increment_token_used(response)
             print(response)
             content = response["choices"][0]["message"]["content"]
@@ -199,6 +202,25 @@ class OpenAI_GPTAssistant(GPTAssistant):
         ]
         
         return self._make_completion_with_vaild_response(messages, self.GPT_DECISION_MAKING_TEMPERATURE)
+
+    def make_summary(self, user_msg: str, text_to_summarize: str) -> tuple[str, str]:
+        current_datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        messages = [
+            {"role": "system", "content": """The user is trying to find more information about: {user_msg}\n
+                                            Focus on information related the user's subject, omit personal information 
+                                            contained in the text""".format(user_msg=user_msg)},
+            {"role": "system", "content": f"Current date and time: {current_datetime}"},
+            {"role": "user", "content": "Make a summary of the following text: \n"+text_to_summarize+""},
+        ]
+
+        response = openai.ChatCompletion.create(model=GPT_3_MODEL,
+                                                messages=messages,
+                                                temperature=self.GPT_SUMMARY_MAKING_TEMPERATURE)
+        self._increment_token_used(response)
+        print(response)
+        content = response["choices"][0]["message"]["content"]
+        print(content)
+        return response, content
 
     def print_response(self, response):
         print(response["choices"][0]["finish_reason"])  #equal to: stop | length | content_filter | null

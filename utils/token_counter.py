@@ -5,7 +5,7 @@ from typing import List
 
 import tiktoken
 
-from GPTAssistant import Message
+from gpt_agent import Message
 
 def count_message_tokens(
     messages: List[Message], model: str = "gpt-3.5-turbo-0301"

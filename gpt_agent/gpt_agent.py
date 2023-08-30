@@ -1,7 +1,7 @@
 import openai
 import datetime
 
-class GPTAssistant:
+class GPT_Agent:
     def initialize(self, name):
         raise NotImplementedError("Subclasses must implement the 'initialize' method.")
     
@@ -11,7 +11,10 @@ class GPTAssistant:
     def make_first_decision(self, user_msg):
         raise NotImplementedError("Subclasses must implement the 'make_first_decision' method.")
     
-    def make_decision(self, user_msg, relevant_memory, assistant_msg, command_result):
+    def make_decision(self,  relevant_memory, last_user_msg, assistant_msg, command_result, user_msg):
+        raise NotImplementedError("Subclasses must implement the 'make_decision' method.")
+
+    def make_summary(self, user_msg: str, text_to_summarize: str) -> tuple[str, str]:
         raise NotImplementedError("Subclasses must implement the 'make_decision' method.")
     
     def print_response(self, response):

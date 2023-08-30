@@ -27,13 +27,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
 from webdriver_manager.microsoft import EdgeChromiumDriverManager as EdgeDriverManager
 from requests.compat import urljoin
+from gpt_agent import GPT_Agent
 
 BrowserOptions = ChromeOptions | EdgeOptions | FirefoxOptions | SafariOptions
 
 FILE_DIR = Path(__file__).parent.parent
 
 
-def browse_website(url: str, question: str) -> str:
+def browse_website(url: str, question: str, agent: GPT_Agent) -> str:
     """Browse a website and return the answer and links to the user
 
     Args:
@@ -42,6 +43,7 @@ def browse_website(url: str, question: str) -> str:
 
     Returns:
         Tuple[str, WebDriver]: The answer and links to the user and the webdriver
+        :param agent:
     """
     try:
         driver, text = scrape_text_with_selenium(url, "firefox")        ##TODO: make this a configuration option somewhere
@@ -50,18 +52,16 @@ def browse_website(url: str, question: str) -> str:
         # Just grab the first line.
         msg = e.msg.split("\n")[0]
         return f"Error: {msg}"
-    
-    return text #TODO: continue with summary before ending the function
 
     add_header(driver)
-    summary = "No summary yet" #summarize_memorize_webpage(url, text, question, driver) #TODO: finish
+    summary = summarize_memorize_webpage(url, text, question, agent, driver) #TODO: finish
     #links = scrape_links_with_selenium(driver, url)    ##TODO
 
     # Limit links to 5
-    if len(links) > 5:
-        links = links[:5]
+    #if len(links) > 5:
+    #    links = links[:5]
     close_browser(driver)
-    return f"Answer gathered from website: {summary}\n\nLinks: {links}"
+    return f"Answer gathered from website: {summary}"#\n\nLinks: {links}"
 
 
 def scrape_text_with_selenium(url: str, browser_name: str) -> tuple[WebDriver, str]:
@@ -221,6 +221,7 @@ def summarize_memorize_webpage(
     url: str,
     text: str,
     question: str,
+    agent: GPT_Agent,
     driver: Optional[WebDriver] = None,
 ) -> str:
     """Summarize text using the OpenAI API
@@ -237,8 +238,13 @@ def summarize_memorize_webpage(
     if not text:
         return "Error: No text to summarize"
 
-    
     text_length = len(text)
+    if text_length > 4096:
+        text = text[:4096]
+    _, summary = agent.make_summary(user_msg=question, text_to_summarize=text)
+    return summary
+
+
     #logger.info(f"Text length: {text_length} characters")
 
     #memory = get_memory(agent.config)      #TODO
