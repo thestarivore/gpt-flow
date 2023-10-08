@@ -2,29 +2,16 @@ import openai
 import datetime
 import json
 import os
-from gpt_agent import GPT_Agent
+from llama_index import GPTTreeIndex
+
+import gpt_agent
+
 from typing import TYPE_CHECKING, List, Literal, Optional, TypedDict
+
+from utils import count_message_tokens, count_string_tokens
 
 GPT_4_MODEL = "gpt-4"
 GPT_3_MODEL = "gpt-3.5-turbo"
-
-MessageRole = Literal["system", "user", "assistant"]
-MessageType = Literal["ai_response", "action_result"]
-
-class MessageDict(dict):
-    def __init_(self, role:MessageRole, content):
-        self.role = role
-        self.content = content
-
-class Message:
-    """OpenAI Message object containing a role and the message content"""
-    def __init__(self, role:MessageRole, content, message_type:MessageType=None):
-        self.role = role
-        self.content = content
-        self.type = message_type
-
-    def raw(self) -> MessageDict:
-        return {"role": self.role, "content": self.content}
 
 class OpenAI_GPT_Agent(GPT_Agent):
     _instance = None
@@ -203,15 +190,50 @@ class OpenAI_GPT_Agent(GPT_Agent):
         
         return self._make_completion_with_vaild_response(messages, self.GPT_DECISION_MAKING_TEMPERATURE)
 
-    def make_summary(self, user_msg: str, text_to_summarize: str) -> tuple[str, str]:
+    def make_summary(self, user_msg: str, text_to_summarize: str, base_summary: str = None) -> tuple[str, str]:
+        SINGLE_SUMMARY_CAPACITY: int = 7000
         current_datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         messages = [
             {"role": "system", "content": """The user is trying to find more information about: {user_msg}\n
                                             Focus on information related the user's subject, omit personal information 
                                             contained in the text""".format(user_msg=user_msg)},
             {"role": "system", "content": f"Current date and time: {current_datetime}"},
-            {"role": "user", "content": "Make a summary of the following text: \n"+text_to_summarize+""},
+            #{"role": "user", "content": "Make a summary of the following text: \n"+text_to_summarize+""},
         ]
+
+        #Count current messages Tokens
+        tokens_until_now: int = count_message_tokens(messages=messages, model="gpt-3.5-turbo")
+        tokens_text_to_summarize: int = count_string_tokens(string=text_to_summarize, model_name="gpt-3.5-turbo")
+
+        query = """The user is trying to find more information about: {user_msg}\n
+                   Summarize the text focusing on information related the user's subject and omit personal information 
+                   contained in the text""".format(user_msg=user_msg)
+        index = GPTTreeIndex(text_to_summarize)
+        response = index.query(query, mode="summarize")
+
+
+
+        #------------------------------------------------------------
+
+        # Check number of tokens
+        text_length: int = len(text_to_summarize)       #TODO: count nr of tokens instead of characters
+        base_text_length: int = 0
+        if base_summary is not None:
+            base_text_length = len(base_summary)
+        remaining_text_to_summarize: str = ""
+        text: str = ""
+        must_split_summary: bool = False
+        if (text_length + base_text_length) > SINGLE_SUMMARY_CAPACITY:
+            text = text_to_summarize[:(SINGLE_SUMMARY_CAPACITY - base_text_length)]
+            remaining_text_to_summarize = text_to_summarize[(SINGLE_SUMMARY_CAPACITY - base_text_length):]
+            must_split_summary = True
+        else:
+            text = text_to_summarize
+
+        # If we don't have the previous summary has been provided
+        if base_summary is not None:
+            text = base_summary + "\n" + text
+        messages.append({"role": "user", "content": "Make a summary of the following text: \n" + text + ""})
 
         response = openai.ChatCompletion.create(model=GPT_3_MODEL,
                                                 messages=messages,
@@ -220,7 +242,14 @@ class OpenAI_GPT_Agent(GPT_Agent):
         print(response)
         content = response["choices"][0]["message"]["content"]
         print(content)
-        return response, content
+
+        # Recursive call if we must split the summary
+        if must_split_summary:
+            return self.make_summary(user_msg=user_msg,
+                                     text_to_summarize=remaining_text_to_summarize,
+                                     base_summary=content)
+        else:
+            return response, content
 
     def print_response(self, response):
         print(response["choices"][0]["finish_reason"])  #equal to: stop | length | content_filter | null

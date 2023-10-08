@@ -14,7 +14,7 @@ class GPT_Agent:
     def make_decision(self,  relevant_memory, last_user_msg, assistant_msg, command_result, user_msg):
         raise NotImplementedError("Subclasses must implement the 'make_decision' method.")
 
-    def make_summary(self, user_msg: str, text_to_summarize: str) -> tuple[str, str]:
+    def make_summary(self, user_msg: str, text_to_summarize: str, base_summary: str = None) -> tuple[str, str]:
         raise NotImplementedError("Subclasses must implement the 'make_decision' method.")
     
     def print_response(self, response):
